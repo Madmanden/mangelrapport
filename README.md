@@ -16,7 +16,12 @@ The project started as a simple local-only single HTML file prototype. You can s
 - `public/` — the browser app and static assets
 - `functions/api/` — Cloudflare Pages Functions
 - `standalone/` — the original local-only prototype
+- `screenshot/` — screenshot of the app
 - `wrangler.toml` — Pages configuration
+
+## Screenshot
+
+![Mangelrapport screenshot](screenshot/screenshot.jpg)
 
 ## Local development
 
