@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mangel-rapport</title>
+  <link rel="stylesheet" href="/mangel-rapport.css">
+</head>
+<body>
+
+
+<!-- App shell: top bar and status overlays -->
+<header>
+  <h1>Mangel-rapport</h1>
+  <span class="sub">— Den Fælles Sterilcentral</span>
+  <span id="sync-status" aria-live="polite"></span>
+  <div class="zoom-wrap">
+    <span id="zoom-label">115%</span>
+    <input type="range" id="zoom-slider" min="80" max="160" step="5" value="115">
+  </div>
+</header>
+
+<div id="error-banner"></div>
+<div id="offline-banner">Ingen forbindelse til appen eller databasen — tjek netværket</div>
+<div id="loading"><div class="spinner"></div><span>Henter data…</span></div>
+
+<!-- Main workspace: reports, editor, and live print preview -->
+<div id="app">
+  <aside>
+    <div id="sidebar-top">
+      <button id="new-report-btn">+ Opret ny rapport</button>
+    </div>
+    <div id="report-list"></div>
+  </aside>
+
+  <section id="editor">
+    <div id="editor-inner">
+      <div class="section-label">Bakkeoplysninger</div>
+      <div class="field">
+        <label for="bakke-id">Bakke-ID</label>
+        <input type="text" id="bakke-id" maxlength="255" placeholder="fx P00004687-002">
+      </div>
+      <div class="field">
+        <label for="bakke-navn">Bakkenavn</label>
+        <input type="text" id="bakke-navn" maxlength="255" placeholder="fx Øjne reol 3">
+      </div>
+      <div class="field">
+        <label for="dato">Dato</label>
+        <input type="date" id="dato">
+      </div>
+      <hr class="separator">
+      <div class="section-label" style="margin-bottom:5px">Manglende instrumenter</div>
+      <p class="paste-tip">Klik billedfeltet, screenshot i T-DOC, tryk Ctrl+V</p>
+      <p class="paste-tip" style="margin-top:-5px">ℹ Billeder gemmes i rapporten</p>
+      <div id="instruments-list"></div>
+      <button id="add-instrument-btn">+ Tilføj instrument</button>
+      <div class="editor-actions">
+        <button id="print-btn">&#128438; Udskriv / Gem som PDF</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="print-preview">
+    <div id="print-preview-inner">
+      <div id="print-placeholder">Vælg eller opret en rapport</div>
+    </div>
+  </section>
+</div>
+
+<!-- App logic: API, state, rendering, and user actions -->
+<script defer src="/mangel-rapport.js"></script>
+</body>
+</html>
