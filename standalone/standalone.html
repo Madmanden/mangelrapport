@@ -1,242 +1,778 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mangelrapport — lokal prototype</title>
-  <style>
-    :root {
-      color-scheme: light;
-      --bg: #f6f4ef;
-      --panel: #fff;
-      --border: #d7d1c7;
-      --text: #1f1d1a;
-      --muted: #706b63;
-      --accent: #1a5c9e;
-      --danger: #b42318;
-      --shadow: 0 8px 30px rgba(0,0,0,.06);
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mangler-rapport — DFS</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f1;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.12);
+    --border-strong: rgba(0,0,0,0.25);
+    --text: #1a1a18;
+    --muted: #6b6b67;
+    --hint: #a8a8a4;
+    --accent: #1a5c9e;
+    --accent-bg: #eaf1f9;
+    --danger: #b91c1c;
+    --danger-bg: #fef2f2;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  header h1 { font-size: 15px; font-weight: 600; }
+  header .sub { font-size: 13px; color: var(--muted); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 320px 1fr;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ---- SIDEBAR ---- */
+  .sidebar {
+    background: var(--surface);
+    border-right: 0.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-top {
+    padding: 12px;
+    border-bottom: 0.5px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .new-btn {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--text);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: opacity 0.12s;
+  }
+  .new-btn:hover { opacity: 0.82; }
+
+  .sidebar-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sidebar-item {
+    border-radius: var(--radius);
+    padding: 9px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+    border: 0.5px solid transparent;
+    transition: background 0.1s;
+  }
+  .sidebar-item:hover { background: var(--bg); }
+  .sidebar-item:hover .item-del { opacity: 1; }
+  .sidebar-item.active { background: var(--accent-bg); border-color: rgba(26,92,158,0.2); }
+  .sidebar-item.active .item-bakke { color: var(--accent); }
+
+  .item-info { min-width: 0; flex: 1; }
+  .item-bakke {
+    font-size: 12px;
+    font-weight: 600;
+    font-family: monospace;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item-bakke.empty { color: var(--hint); font-weight: 400; font-style: italic; font-family: inherit; }
+  .item-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .item-del {
+    opacity: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--hint);
+    font-size: 15px;
+    line-height: 1;
+    padding: 1px 4px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: color 0.1s, background 0.1s, opacity 0.1s;
+  }
+  .item-del:hover { color: var(--danger); background: var(--danger-bg); }
+
+  .sidebar-empty {
+    font-size: 12px;
+    color: var(--hint);
+    font-style: italic;
+    text-align: center;
+    padding: 20px 12px;
+  }
+
+  .sidebar-footer {
+    padding: 8px 12px;
+    border-top: 0.5px solid var(--border);
+    font-size: 11px;
+    color: var(--hint);
+    flex-shrink: 0;
+    line-height: 1.4;
+  }
+
+  /* ---- EDITOR ---- */
+  .editor {
+    background: var(--surface);
+    border-right: 0.5px solid var(--border);
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .editor-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: var(--hint);
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .field input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius);
+    font-size: 14px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+  }
+  .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(26,92,158,0.15); }
+
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 14px 0; }
+
+  .instr-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+
+  .instr-row {
+    display: grid;
+    grid-template-columns: 58px 1fr auto;
+    gap: 7px;
+    align-items: center;
+    background: #fafaf8;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 7px;
+  }
+  .instr-row:hover { border-color: var(--border-strong); }
+
+  .paste-zone {
+    width: 50px;
+    height: 50px;
+    border: 0.5px dashed var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--bg);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    flex-shrink: 0;
+    overflow: hidden;
+    outline: none;
+  }
+  .paste-zone:focus, .paste-zone.active {
+    border-color: var(--accent);
+    border-style: solid;
+    box-shadow: 0 0 0 2px rgba(26,92,158,0.15);
+  }
+  .paste-zone img { width: 100%; height: 100%; object-fit: cover; }
+  .paste-zone .pz-plus { font-size: 18px; color: var(--hint); line-height: 1; pointer-events: none; }
+  .paste-zone .pz-label { font-size: 9px; color: var(--hint); text-align: center; line-height: 1.3; pointer-events: none; }
+
+  .instr-fields { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .instr-fields input {
+    width: 100%;
+    padding: 5px 8px;
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+  }
+  .instr-fields input:focus { border-color: var(--accent); }
+
+  .del-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 0.5px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .del-btn:hover { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+
+  .add-btn {
+    width: 100%;
+    padding: 8px;
+    border: 0.5px dashed var(--border-strong);
+    border-radius: var(--radius);
+    background: none;
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 14px;
+    transition: background 0.12s;
+  }
+  .add-btn:hover { background: var(--bg); }
+
+  .paste-tip {
+    font-size: 11px;
+    color: var(--hint);
+    text-align: center;
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  .editor-actions { margin-top: auto; padding-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+
+  .print-btn {
+    width: 100%;
+    padding: 9px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--text);
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.12s;
+  }
+  .print-btn:hover { opacity: 0.82; }
+
+  /* ---- PREVIEW ---- */
+  .preview-panel {
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: stretch;
+  }
+
+  .print-page {
+    background: white;
+    width: 100%;
+    max-width: 1600px;
+    min-height: 500px;
+    padding: 28px 32px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    color: #1a1a1a;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  .preview-empty {
+    color: #bbb;
+    font-size: 13px;
+    font-style: italic;
+    text-align: center;
+    padding-top: 60px;
+  }
+
+  .ph { border-bottom: 2px solid #1a1a1a; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .ph-left h2 { font-size: 17px; font-weight: 700; margin-bottom: 3px; }
+  .ph-left .ph-bakke { font-size: 13px; color: #333; font-family: monospace; font-weight: 600; }
+  .ph-right { text-align: right; font-size: 11px; color: #666; line-height: 1.6; }
+
+  .pt { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 12px; table-layout: fixed; }
+  .pt th { text-align: left; padding: 5px 8px; border-bottom: 0.5px solid #bbb; color: #555; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; vertical-align: middle; }
+  .pt th.center { text-align: center !important; }
+  .pt td.center { text-align: center !important; }
+  .pt td { padding: 6px 8px; border-bottom: 0.5px solid #eee; vertical-align: middle; }
+  .pt tr:last-child td { border-bottom: none; }
+  .pt .nr { font-family: monospace; font-size: 13px; font-weight: 600; }
+  .pt .has-img { color: #2d7a3a; font-size: 11px; text-align: center; }
+  .pt .no-img { color: #bbb; font-size: 11px; text-align: center; }
+  .pt col.col-num    { width: 32px; }
+  .pt col.col-nr     { width: auto; }
+  .pt col.col-antal  { width: 60px; }
+  .pt col.col-billede{ width: 70px; }
+  .pt col.col-fundet { width: 80px; }
+
+  .img-section { border-top: 0.5px solid #ddd; padding-top: 14px; }
+  .img-section-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .img-grid { display: grid; gap: 10px; }
+  .img-cell { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .img-cell img { width: 100%; aspect-ratio: 1/1; object-fit: contain; border: 0.5px solid #ddd; border-radius: 4px; display: block; background: #fafafa; }
+  .img-cell .img-label { font-size: 10px; color: #555; text-align: center; word-break: break-all; font-family: monospace; }
+
+  /* ---- PRINT ---- */
+  @page { size: auto; margin: 10mm 12mm; }
+
+  @media print {
+    body { background: white; overflow: visible; height: auto; }
+    .sidebar, .editor, header { display: none !important; }
+    .layout { display: block; height: auto; overflow: visible; }
+    .preview-panel { padding: 0; display: block; overflow: visible; }
+    .print-page {
+      border: none; border-radius: 0;
+      width: 100%; max-width: 100%;
+      padding: 0; min-height: unset;
+      zoom: 1 !important; overflow: visible;
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif;
-      color: var(--text);
-      background: linear-gradient(180deg, #fbfaf7, var(--bg));
-      min-height: 100vh;
-    }
-    header, main, footer { max-width: 980px; margin: 0 auto; padding: 16px; }
-    header { padding-top: 28px; }
-    h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.1; }
-    .lead { margin: 0; color: var(--muted); max-width: 70ch; }
-    .notice {
-      margin-top: 18px;
-      padding: 12px 14px;
-      border: 1px solid var(--border);
-      background: #fff8e7;
-      border-radius: 12px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1.4fr;
-      gap: 16px;
-      align-items: start;
-      margin-top: 18px;
-    }
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      box-shadow: var(--shadow);
-      padding: 16px;
-    }
-    label { display: block; font-weight: 600; margin-bottom: 6px; }
-    input, button, textarea {
-      font: inherit;
-      width: 100%;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      padding: 10px 12px;
-      background: #fff;
-      color: inherit;
-    }
-    textarea { min-height: 96px; resize: vertical; }
-    button {
-      cursor: pointer;
-      font-weight: 600;
-      background: var(--accent);
-      color: white;
-      border-color: transparent;
-    }
-    button.secondary {
-      background: #f0ede7;
-      color: var(--text);
-      border-color: var(--border);
-    }
-    button.danger {
-      background: #fff;
-      color: var(--danger);
-      border-color: #e8c1bc;
-    }
-    .row { display: grid; gap: 10px; }
-    .row + .row { margin-top: 12px; }
-    .toolbar {
-      display: flex;
-      gap: 10px;
-      margin-top: 12px;
-      flex-wrap: wrap;
-    }
-    .toolbar > * { flex: 1 1 140px; }
-    ul { list-style: none; padding: 0; margin: 0; }
-    li {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      justify-content: space-between;
-      padding: 12px 0;
-      border-top: 1px solid var(--border);
-    }
-    li:first-child { border-top: 0; }
-    .meta { color: var(--muted); font-size: 12px; }
-    .item-main { flex: 1; }
-    .item-title { font-weight: 700; margin-bottom: 2px; }
-    .item-body { white-space: pre-wrap; }
-    .item-actions { display: flex; gap: 8px; }
-    .item-actions button { width: auto; padding: 8px 10px; }
-    footer { color: var(--muted); font-size: 12px; padding-bottom: 32px; }
-    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
-  </style>
+
+    .ph { padding-bottom: 5px; margin-bottom: 6px; }
+    .ph-left h2 { font-size: 19px; }
+    .ph-left .ph-bakke { font-size: 15px; }
+    .ph-right { font-size: 13px; }
+
+    .pt { font-size: 13px; margin-bottom: 6px; }
+    .pt th { padding: 3px 7px; font-size: 12px; }
+    .pt td { padding: 3px 7px; }
+    .pt .nr { font-size: 15px; }
+
+    .img-section { padding-top: 6px; }
+    .img-section-label { font-size: 12px; margin-bottom: 4px; }
+    .img-grid { gap: 5px; }
+    .img-cell img { max-height: 160mm; }
+    .img-cell .img-label { font-size: 12px; }
+
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  @media print and (orientation: landscape) {
+    .img-cell img { max-height: 80mm; }
+    .img-grid { grid-template-columns: repeat(3, 1fr) !important; }
+  }
+</style>
 </head>
 <body>
-  <header>
-    <h1>Mangelrapport</h1>
-    <p class="lead">Lokal prototype i én HTML-fil. Denne version gemmer kun data i <code>localStorage</code> og deler dem ikke mellem maskiner.</p>
-    <div class="notice">
-      Dette er den oprindelige lokale start på projektet — før det blev til en webapp med delt database for kolleger.
+
+<header>
+  <h1>Mangler-rapport</h1>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+    <span style="font-size:13px;color:var(--muted);">Zoom</span>
+    <input type="range" id="zoom-slider" min="80" max="160" value="100" step="5" style="width:100px;">
+    <span id="zoom-label" style="font-size:13px;color:var(--muted);min-width:36px;">100%</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <div class="sidebar">
+    <div class="sidebar-top">
+      <button class="new-btn" onclick="newReport()">+ Ny rapport</button>
     </div>
-  </header>
+    <div class="sidebar-list" id="sidebar-list"></div>
+    <div class="sidebar-footer">Rapporter slettes automatisk efter 60 dage</div>
+  </div>
 
-  <main class="grid">
-    <section class="card">
-      <form id="form">
-        <div class="row">
-          <div>
-            <label for="bakke">Bakke-ID</label>
-            <input id="bakke" name="bakke" placeholder="fx P00004687-002" required>
-          </div>
-          <div>
-            <label for="navn">Bakkenavn</label>
-            <input id="navn" name="navn" placeholder="fx Øjne reol 3">
-          </div>
-          <div>
-            <label for="instrument">Manglende instrument</label>
-            <input id="instrument" name="instrument" placeholder="fx BM067R" required>
-          </div>
-          <div>
-            <label for="note">Note</label>
-            <textarea id="note" name="note" placeholder="Valgfri note"></textarea>
-          </div>
-        </div>
-        <div class="toolbar">
-          <button type="submit">Gem lokalt</button>
-          <button type="button" class="secondary" id="reset">Ryd alt</button>
-        </div>
-      </form>
-    </section>
+  <div class="editor" id="editor">
+    <div class="editor-empty">Vælg en rapport eller opret en ny</div>
+  </div>
 
-    <section class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <div>
-          <strong>Lokale rapporter</strong>
-          <div class="meta" id="count">0 rapporter</div>
-        </div>
-        <div class="meta">Kun denne browser</div>
-      </div>
-      <ul id="list" style="margin-top:12px;"></ul>
-    </section>
-  </main>
+  <div class="preview-panel">
+    <div class="print-page" id="print-page">
+      <div class="preview-empty">Vælg en rapport for at se forhåndsvisning&hellip;</div>
+    </div>
+  </div>
 
-  <footer>
-    Prototype note: this file exists only as the original single-file local version.
-  </footer>
+</div>
 
-  <script>
-    const KEY = 'mangelrapport-standalone-v1';
-    const form = document.getElementById('form');
-    const list = document.getElementById('list');
-    const count = document.getElementById('count');
-    const resetBtn = document.getElementById('reset');
+<script>
+  const STORAGE_KEY = 'dfs_mangler_v3';
+  const MAX_AGE_MS = 60 * 24 * 60 * 60 * 1000;
 
-    function load() {
-      try {
-        return JSON.parse(localStorage.getItem(KEY) || '[]');
-      } catch {
-        return [];
+  let reports = [];
+  let activeId = null;
+  let activePasteId = null;
+
+  function today() { return new Date().toISOString().slice(0, 10); }
+  function uid() { return Date.now() + '_' + Math.random().toString(36).slice(2); }
+  function newRow() { return { id: uid(), antal: '1', nummer: '', img: null }; }
+  function newReportObj() {
+    const now = new Date().toISOString();
+    return { id: uid(), createdAt: now, updatedAt: now, bakkeId: '', bakkeNavn: '', dato: today(), rows: [newRow()] };
+  }
+
+  function escHtml(s) {
+    return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* STORAGE */
+  function saveAll() {
+    try {
+      const data = reports.map(r => ({
+        id: r.id, createdAt: r.createdAt, updatedAt: r.updatedAt,
+        bakkeId: r.bakkeId, bakkeNavn: r.bakkeNavn || '', dato: r.dato,
+        rows: r.rows.map(row => ({ id: row.id, antal: row.antal, nummer: row.nummer }))
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ reports: data, activeId }));
+    } catch(e) {}
+  }
+
+  function loadAll() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const cutoff = Date.now() - MAX_AGE_MS;
+      reports = (parsed.reports || [])
+        .filter(r => new Date(r.updatedAt).getTime() > cutoff)
+        .map(r => ({ ...r, rows: (r.rows || []).map(row => ({ ...row, img: null })) }));
+      activeId = parsed.activeId || null;
+      if (activeId && !reports.find(r => r.id === activeId)) activeId = null;
+    } catch(e) {}
+  }
+
+  function touch(r) { r.updatedAt = new Date().toISOString(); }
+  function activeReport() { return reports.find(r => r.id === activeId) || null; }
+
+  /* REPORT ACTIONS */
+  function newReport() {
+    const r = newReportObj();
+    reports.unshift(r);
+    activeId = r.id;
+    activePasteId = null;
+    saveAll(); renderSidebar(); renderEditor(); renderPreview();
+    setTimeout(() => { const i = document.getElementById('bakke-id-input'); if (i) i.focus(); }, 30);
+  }
+
+  function selectReport(id) {
+    activeId = id; activePasteId = null;
+    saveAll(); renderSidebar(); renderEditor(); renderPreview();
+  }
+
+  function deleteReport(id, e) {
+    e.stopPropagation();
+    const r = reports.find(x => x.id === id);
+    const label = r && r.bakkeId ? r.bakkeId : 'denne rapport';
+    if (!confirm('Slet ' + label + '?')) return;
+    reports = reports.filter(x => x.id !== id);
+    if (activeId === id) { activeId = reports.length ? reports[0].id : null; activePasteId = null; }
+    saveAll(); renderSidebar(); renderEditor(); renderPreview();
+  }
+
+  /* SIDEBAR */
+  function renderSidebar() {
+    const list = document.getElementById('sidebar-list');
+    list.innerHTML = '';
+    if (!reports.length) {
+      list.innerHTML = '<div class="sidebar-empty">Ingen rapporter endnu</div>';
+      return;
+    }
+    reports.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'sidebar-item' + (r.id === activeId ? ' active' : '');
+      item.onclick = () => selectReport(r.id);
+      const dato = r.dato
+        ? new Date(r.dato + 'T12:00:00').toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })
+        : '—';
+      const count = r.rows.filter(x => x.antal || x.nummer).length;
+      item.innerHTML =
+        '<div class="item-info">' +
+          '<div class="item-bakke' + (r.bakkeId ? '' : ' empty') + '">' + escHtml(r.bakkeId || 'Ingen bakke-ID') + '</div>' +
+          '<div class="item-meta">' + dato + ' &middot; ' + count + ' instr.</div>' +
+        '</div>' +
+        '<button class="item-del" title="Slet rapport">&times;</button>';
+      item.querySelector('.item-del').addEventListener('click', e => deleteReport(r.id, e));
+      list.appendChild(item);
+    });
+  }
+
+  /* EDITOR */
+  function renderEditor() {
+    const editor = document.getElementById('editor');
+    const r = activeReport();
+    if (!r) {
+      editor.innerHTML = '<div class="editor-empty">Vælg en rapport eller opret en ny</div>';
+      return;
+    }
+    editor.innerHTML =
+      '<div class="section-label">Bakkeoplysninger</div>' +
+      '<div class="field"><label>Bakke-ID</label>' +
+        '<input type="text" id="bakke-id-input" placeholder="P00004687-002" value="' + escHtml(r.bakkeId) + '" autocomplete="off"></div>' +
+      '<div class="field"><label>Bakkenavn <span style="font-weight:400;color:var(--hint)">(valgfrit)</span></label>' +
+        '<input type="text" id="bakke-navn-input" placeholder="fx Håndbakke" value="' + escHtml(r.bakkeNavn || '') + '" autocomplete="off"></div>' +
+      '<div class="field"><label>Dato</label>' +
+        '<input type="date" id="dato-input" value="' + (r.dato || today()) + '"></div>' +
+      '<hr class="divider">' +
+      '<div class="section-label" style="margin-bottom:5px">Manglende instrumenter</div>' +
+      '<p class="paste-tip">Klik billedfeltet, tag et screenshot, tryk Ctrl+V</p>' +
+      '<p class="paste-tip" style="margin-top:-5px">&#9432; Billeder gemmes kun i denne session</p>' +
+      '<div class="instr-list" id="instr-list"></div>' +
+      '<button class="add-btn" id="add-instr-btn">+ Tilføj instrument</button>' +
+      '<div class="editor-actions">' +
+        '<button class="print-btn" id="print-btn">&#128438; Udskriv / Gem som PDF</button>' +
+      '</div>';
+
+    document.getElementById('bakke-id-input').addEventListener('input', e => {
+      const rep = activeReport(); if (!rep) return;
+      rep.bakkeId = e.target.value; touch(rep); saveAll(); renderSidebar(); renderPreview();
+    });
+    document.getElementById('bakke-navn-input').addEventListener('input', e => {
+      const rep = activeReport(); if (!rep) return;
+      rep.bakkeNavn = e.target.value; touch(rep); saveAll(); renderPreview();
+    });
+    document.getElementById('dato-input').addEventListener('input', e => {
+      const rep = activeReport(); if (!rep) return;
+      rep.dato = e.target.value; touch(rep); saveAll(); renderSidebar(); renderPreview();
+    });
+    document.getElementById('add-instr-btn').addEventListener('click', addRow);
+    document.getElementById('print-btn').addEventListener('click', () => window.print());
+
+    renderRows();
+  }
+
+  function renderRows() {
+    const r = activeReport();
+    const list = document.getElementById('instr-list');
+    if (!r || !list) return;
+    list.innerHTML = '';
+    r.rows.forEach(row => {
+      const div = document.createElement('div');
+      div.className = 'instr-row';
+
+      const pz = document.createElement('div');
+      pz.style.position = 'relative';
+      pz.style.flexShrink = '0';
+      pz.style.width = '50px';
+
+      const zone = document.createElement('div');
+      zone.className = 'paste-zone' + (activePasteId === row.id ? ' active' : '');
+      zone.tabIndex = 0;
+      zone.title = 'Klik, tag et screenshot, Ctrl+V';
+      if (row.img) {
+        const img = document.createElement('img'); img.src = row.img; zone.appendChild(img);
+
+        const rmBtn = document.createElement('button');
+        rmBtn.innerHTML = '&times;';
+        rmBtn.title = 'Fjern billede';
+        rmBtn.style.cssText = 'position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:var(--danger);color:white;border:none;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;z-index:1;';
+        rmBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          row.img = null;
+          renderRows(); renderPreview();
+        });
+        pz.appendChild(rmBtn);
+      } else {
+        zone.innerHTML = '<span class="pz-plus">+</span><span class="pz-label">Ctrl+V</span>';
+      }
+      zone.addEventListener('click', () => setActivePaste(row.id, zone));
+      zone.addEventListener('focus', () => setActivePaste(row.id, zone));
+      pz.appendChild(zone);
+
+      const fields = document.createElement('div');
+      fields.className = 'instr-fields';
+
+      const antalInp = document.createElement('input');
+      antalInp.type = 'text'; antalInp.placeholder = 'Antal'; antalInp.value = row.antal;
+      antalInp.addEventListener('input', e => { row.antal = e.target.value; touch(r); saveAll(); renderSidebar(); renderPreview(); });
+
+      const nummerInp = document.createElement('input');
+      nummerInp.type = 'text'; nummerInp.placeholder = 'Instrument-nr. (fx BM067R)'; nummerInp.value = row.nummer;
+      nummerInp.addEventListener('input', e => { row.nummer = e.target.value; touch(r); saveAll(); renderSidebar(); renderPreview(); });
+
+      fields.appendChild(antalInp);
+      fields.appendChild(nummerInp);
+
+      const del = document.createElement('button');
+      del.className = 'del-btn'; del.title = 'Slet instrument'; del.innerHTML = '&times;';
+      del.addEventListener('click', () => {
+        r.rows = r.rows.filter(x => x.id !== row.id);
+        if (!r.rows.length) r.rows.push(newRow());
+        if (activePasteId === row.id) activePasteId = null;
+        touch(r); saveAll(); renderRows(); renderPreview();
+      });
+
+      div.appendChild(pz); div.appendChild(fields); div.appendChild(del);
+      list.appendChild(div);
+    });
+  }
+
+  function addRow() {
+    const r = activeReport(); if (!r) return;
+    const row = newRow(); r.rows.push(row);
+    touch(r); saveAll(); renderRows(); renderPreview();
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('.instr-fields input:last-child');
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    }, 30);
+  }
+
+  function setActivePaste(id, el) {
+    activePasteId = id;
+    document.querySelectorAll('.paste-zone').forEach(z => z.classList.remove('active'));
+    el.classList.add('active'); el.focus();
+  }
+
+  /* PASTE */
+  document.addEventListener('paste', e => {
+    const r = activeReport(); if (!r) return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        const file = items[i].getAsFile();
+        const targetId = activePasteId || (r.rows.length ? r.rows[r.rows.length - 1].id : null);
+        if (!targetId) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const row = r.rows.find(x => x.id === targetId);
+          if (row) { row.img = ev.target.result; renderRows(); renderPreview(); }
+        };
+        reader.readAsDataURL(file);
+        break;
       }
     }
+  });
 
-    function save(items) {
-      localStorage.setItem(KEY, JSON.stringify(items));
+  /* PREVIEW */
+  function renderPreview() {
+    const page = document.getElementById('print-page');
+    const r = activeReport();
+    if (!r) { page.innerHTML = '<div class="preview-empty">Vælg en rapport for at se forhåndsvisning&hellip;</div>'; return; }
+
+    const bakke = (r.bakkeId || '').trim();
+    const navn = (r.bakkeNavn || '').trim();
+    const bakkeLabel = bakke + (navn ? ' - ' + navn : '');
+    const dato = r.dato
+      ? new Date(r.dato + 'T12:00:00').toLocaleDateString('da-DK', { day: '2-digit', month: 'long', year: 'numeric' })
+      : '—';
+    const rows = r.rows.filter(x => x.antal.trim() || x.nummer.trim() || x.img);
+
+    if (!bakke && !rows.length) {
+      page.innerHTML = '<div class="preview-empty">Udfyld bakke-ID og tilføj instrumenter&hellip;</div>'; return;
     }
 
-    function escapeHtml(text) {
-      return String(text)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-    }
+    const count = rows.length;
+    const withImg = rows.filter(x => x.img);
+    const imgCount = withImg.length;
 
-    function render() {
-      const items = load();
-      count.textContent = `${items.length} rapport${items.length === 1 ? '' : 'er'}`;
-      list.innerHTML = items.length
-        ? items.map((item, index) => `
-            <li>
-              <div class="item-main">
-                <div class="item-title">${escapeHtml(item.bakke)} ${item.navn ? `— ${escapeHtml(item.navn)}` : ''}</div>
-                <div class="meta">${escapeHtml(item.date)}</div>
-                <div class="item-body" style="margin-top:8px;">${escapeHtml(item.instrument)}${item.note ? `\n${escapeHtml(item.note)}` : ''}</div>
-              </div>
-              <div class="item-actions">
-                <button class="danger" data-delete="${index}">Slet</button>
-              </div>
-            </li>
-          `).join('')
-        : '<li><div class="meta">Ingen lokale rapporter endnu.</div></li>';
-    }
+    let imgCols;
+    if      (imgCount === 1) imgCols = 1;
+    else if (imgCount === 2) imgCols = 2;
+    else if (imgCount <= 4)  imgCols = 2;
+    else                     imgCols = 3;
+    const gridStyle = 'grid-template-columns:repeat(' + imgCols + ',1fr);';
 
-    form.addEventListener('submit', event => {
-      event.preventDefault();
-      const items = load();
-      items.unshift({
-        bakke: form.bakke.value.trim(),
-        navn: form.navn.value.trim(),
-        instrument: form.instrument.value.trim(),
-        note: form.note.value.trim(),
-        date: new Date().toLocaleString('da-DK')
-      });
-      save(items);
-      form.reset();
-      render();
-    });
+    const tableRows = rows.map((x, i) =>
+      '<tr><td>' + (i+1) + '</td>' +
+      '<td class="nr">' + escHtml(x.nummer || '—') + '</td>' +
+      '<td class="center">' + escHtml(x.antal || '—') + '</td>' +
+      '<td class="' + (x.img ? 'has-img' : 'no-img') + '">' + (x.img ? '&#10003;' : '—') + '</td>' +
+      '<td class="center"><input type="checkbox" style="width:14px;height:14px;cursor:pointer"></td></tr>'
+    ).join('');
 
-    list.addEventListener('click', event => {
-      const btn = event.target.closest('[data-delete]');
-      if (!btn) return;
-      const items = load();
-      items.splice(Number(btn.dataset.delete), 1);
-      save(items);
-      render();
-    });
+    const imgCells = withImg.map(x =>
+      '<div class="img-cell">' +
+        '<img src="' + x.img + '" alt="' + escHtml(x.nummer || 'instrument') + '">' +
+        '<div class="img-label">' + (x.antal ? escHtml(x.antal) + ' &times; ' : '') + escHtml(x.nummer || 'Ukendt') + '</div>' +
+      '</div>'
+    ).join('');
 
-    resetBtn.addEventListener('click', () => {
-      if (!confirm('Ryd alle lokale rapporter?')) return;
-      localStorage.removeItem(KEY);
-      render();
-    });
+    const bodyLayout =
+      '<table class="pt">' +
+        '<colgroup><col class="col-num"><col class="col-nr"><col class="col-antal"><col class="col-billede"><col class="col-fundet"></colgroup>' +
+        '<thead><tr><th>#</th><th>Instrument-nr.</th><th style="text-align:center">Antal</th><th style="text-align:center">Billede</th><th style="text-align:center">Fundet?</th></tr></thead>' +
+        '<tbody>' + tableRows + '</tbody></table>' +
+      (imgCount
+        ? '<div class="img-section">' +
+            '<div class="img-section-label">Billeder</div>' +
+            '<div class="img-grid" style="' + gridStyle + '">' + imgCells + '</div>' +
+          '</div>'
+        : '<p style="font-size:12px;color:#bbb;font-style:italic;margin-top:8px;">Ingen billeder tilføjet.</p>');
 
-    render();
-  </script>
+    page.innerHTML =
+      '<div class="ph">' +
+        '<div class="ph-left">' +
+          '<h2>Manglende instrumenter</h2>' +
+          '<div class="ph-bakke">Bakke: ' + escHtml(bakkeLabel || '—') + '</div>' +
+        '</div>' +
+        '<div class="ph-right">' + dato + '<br>' + count + ' instrument' + (count !== 1 ? 'er' : '') + '</div>' +
+      '</div>' +
+      bodyLayout;
+  }
+
+  /* BOOT */
+  loadAll();
+  renderSidebar();
+  renderEditor();
+  renderPreview();
+
+  /* ZOOM */
+  const zoomSlider = document.getElementById('zoom-slider');
+  const zoomLabel = document.getElementById('zoom-label');
+  const savedZoom = localStorage.getItem('dfs_zoom') || '115';
+  zoomSlider.value = savedZoom;
+  applyZoom(savedZoom);
+
+  zoomSlider.addEventListener('input', e => {
+    applyZoom(e.target.value);
+    localStorage.setItem('dfs_zoom', e.target.value);
+  });
+
+  function applyZoom(pct) {
+    zoomLabel.textContent = pct + '%';
+    document.querySelector('.layout').style.zoom = (pct / 100);
+  }
+</script>
 </body>
 </html>
