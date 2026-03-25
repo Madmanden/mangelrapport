@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mangelrapport — lokal prototype</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f4ef;
+      --panel: #fff;
+      --border: #d7d1c7;
+      --text: #1f1d1a;
+      --muted: #706b63;
+      --accent: #1a5c9e;
+      --danger: #b42318;
+      --shadow: 0 8px 30px rgba(0,0,0,.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #fbfaf7, var(--bg));
+      min-height: 100vh;
+    }
+    header, main, footer { max-width: 980px; margin: 0 auto; padding: 16px; }
+    header { padding-top: 28px; }
+    h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.1; }
+    .lead { margin: 0; color: var(--muted); max-width: 70ch; }
+    .notice {
+      margin-top: 18px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      background: #fff8e7;
+      border-radius: 12px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 16px;
+      align-items: start;
+      margin-top: 18px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    input, button, textarea {
+      font: inherit;
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      background: #fff;
+      color: inherit;
+    }
+    textarea { min-height: 96px; resize: vertical; }
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      background: var(--accent);
+      color: white;
+      border-color: transparent;
+    }
+    button.secondary {
+      background: #f0ede7;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    button.danger {
+      background: #fff;
+      color: var(--danger);
+      border-color: #e8c1bc;
+    }
+    .row { display: grid; gap: 10px; }
+    .row + .row { margin-top: 12px; }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .toolbar > * { flex: 1 1 140px; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+    }
+    li:first-child { border-top: 0; }
+    .meta { color: var(--muted); font-size: 12px; }
+    .item-main { flex: 1; }
+    .item-title { font-weight: 700; margin-bottom: 2px; }
+    .item-body { white-space: pre-wrap; }
+    .item-actions { display: flex; gap: 8px; }
+    .item-actions button { width: auto; padding: 8px 10px; }
+    footer { color: var(--muted); font-size: 12px; padding-bottom: 32px; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Mangelrapport</h1>
+    <p class="lead">Lokal prototype i én HTML-fil. Denne version gemmer kun data i <code>localStorage</code> og deler dem ikke mellem maskiner.</p>
+    <div class="notice">
+      Dette er den oprindelige lokale start på projektet — før det blev til en webapp med delt database for kolleger.
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <form id="form">
+        <div class="row">
+          <div>
+            <label for="bakke">Bakke-ID</label>
+            <input id="bakke" name="bakke" placeholder="fx P00004687-002" required>
+          </div>
+          <div>
+            <label for="navn">Bakkenavn</label>
+            <input id="navn" name="navn" placeholder="fx Øjne reol 3">
+          </div>
+          <div>
+            <label for="instrument">Manglende instrument</label>
+            <input id="instrument" name="instrument" placeholder="fx BM067R" required>
+          </div>
+          <div>
+            <label for="note">Note</label>
+            <textarea id="note" name="note" placeholder="Valgfri note"></textarea>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button type="submit">Gem lokalt</button>
+          <button type="button" class="secondary" id="reset">Ryd alt</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <strong>Lokale rapporter</strong>
+          <div class="meta" id="count">0 rapporter</div>
+        </div>
+        <div class="meta">Kun denne browser</div>
+      </div>
+      <ul id="list" style="margin-top:12px;"></ul>
+    </section>
+  </main>
+
+  <footer>
+    Prototype note: this file exists only as the original single-file local version.
+  </footer>
+
+  <script>
+    const KEY = 'mangelrapport-standalone-v1';
+    const form = document.getElementById('form');
+    const list = document.getElementById('list');
+    const count = document.getElementById('count');
+    const resetBtn = document.getElementById('reset');
+
+    function load() {
+      try {
+        return JSON.parse(localStorage.getItem(KEY) || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function save(items) {
+      localStorage.setItem(KEY, JSON.stringify(items));
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function render() {
+      const items = load();
+      count.textContent = `${items.length} rapport${items.length === 1 ? '' : 'er'}`;
+      list.innerHTML = items.length
+        ? items.map((item, index) => `
+            <li>
+              <div class="item-main">
+                <div class="item-title">${escapeHtml(item.bakke)} ${item.navn ? `— ${escapeHtml(item.navn)}` : ''}</div>
+                <div class="meta">${escapeHtml(item.date)}</div>
+                <div class="item-body" style="margin-top:8px;">${escapeHtml(item.instrument)}${item.note ? `\n${escapeHtml(item.note)}` : ''}</div>
+              </div>
+              <div class="item-actions">
+                <button class="danger" data-delete="${index}">Slet</button>
+              </div>
+            </li>
+          `).join('')
+        : '<li><div class="meta">Ingen lokale rapporter endnu.</div></li>';
+    }
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const items = load();
+      items.unshift({
+        bakke: form.bakke.value.trim(),
+        navn: form.navn.value.trim(),
+        instrument: form.instrument.value.trim(),
+        note: form.note.value.trim(),
+        date: new Date().toLocaleString('da-DK')
+      });
+      save(items);
+      form.reset();
+      render();
+    });
+
+    list.addEventListener('click', event => {
+      const btn = event.target.closest('[data-delete]');
+      if (!btn) return;
+      const items = load();
+      items.splice(Number(btn.dataset.delete), 1);
+      save(items);
+      render();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      if (!confirm('Ryd alle lokale rapporter?')) return;
+      localStorage.removeItem(KEY);
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

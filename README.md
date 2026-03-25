@@ -2,6 +2,8 @@
 
 Mangelrapport is a small Cloudflare Pages app for tracking missing instruments in repair trays.
 
+It started as a simple local-only single HTML file prototype. You can still see that early shape in `standalone/standalone.html`. I later turned it into a web app because coworkers needed to work against the same shared database instead of separate local copies.
+
 ## What it does
 
 - create, edit, and delete reports
@@ -13,6 +15,7 @@ Mangelrapport is a small Cloudflare Pages app for tracking missing instruments i
 
 - `public/` — the browser app and static assets
 - `functions/api/` — Cloudflare Pages Functions
+- `standalone/` — the original local-only prototype
 - `wrangler.toml` — Pages configuration
 
 ## Local development
