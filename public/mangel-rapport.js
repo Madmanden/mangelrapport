@@ -54,7 +54,7 @@ async function api(path, options = {}) {
   }
 
   if (text && !contentType.includes('application/json') && typeof data !== 'object') {
-    throw new Error('Du skal logge ind via Cloudflare Access igen.');
+    throw new Error('Du skal logge ind igen.');
   }
 
   return data;
