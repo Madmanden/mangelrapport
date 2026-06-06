@@ -16,6 +16,8 @@ The project grew out of a local-only prototype. You can still see the original s
 - add missing instruments and photos
 - show a live print preview
 - persist data through Cloudflare Pages Functions and Turso
+- automatically remove reports that have not been updated for 60 days
+- highlight reports in yellow when their report date is more than 7 days old
 - warn when the current session has expired
 
 ## Project structure
