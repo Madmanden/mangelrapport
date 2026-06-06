@@ -12,6 +12,7 @@
 <!-- App shell: top bar and status overlays -->
 <header>
   <h1>Mangel-rapport</h1>
+  <span class="sub">— Den Fælles Sterilcentral</span>
   <span id="sync-status" aria-live="polite"></span>
   <div class="zoom-wrap">
     <span id="zoom-label">115%</span>
@@ -21,6 +22,7 @@
 
 <div id="error-banner"></div>
 <div id="offline-banner">Ingen forbindelse til appen eller databasen — tjek netværket</div>
+<div id="session-banner">Din session er udløbet. <button onclick="window.location.reload()">Genindlæs for at logge ind igen</button></div>
 <div id="loading"><div class="spinner"></div><span>Henter data…</span></div>
 
 <!-- Main workspace: reports, editor, and live print preview -->
@@ -32,29 +34,28 @@
     <div id="report-list"></div>
   </aside>
 
-  <section id="editor">
+  <section id="editor" title="Du skal oprette en ny rapport først.">
     <div id="editor-inner">
       <div class="section-label">Bakkeoplysninger</div>
       <div class="field">
         <label for="bakke-id">Bakke-ID</label>
-        <input type="text" id="bakke-id" maxlength="255" placeholder="fx P00004687-002">
+        <input type="text" id="bakke-id" maxlength="255" placeholder="fx P00004687-002" disabled>
       </div>
       <div class="field">
         <label for="bakke-navn">Bakkenavn</label>
-        <input type="text" id="bakke-navn" maxlength="255" placeholder="fx Øjne reol 3">
+        <input type="text" id="bakke-navn" maxlength="255" placeholder="fx Hofterevision" disabled>
       </div>
       <div class="field">
         <label for="dato">Dato</label>
-        <input type="date" id="dato">
+        <input type="date" id="dato" disabled>
       </div>
       <hr class="separator">
       <div class="section-label" style="margin-bottom:5px">Manglende instrumenter</div>
-      <p class="paste-tip">Klik billedfeltet, tag et screenshot, tryk Ctrl+V</p>
-      <p class="paste-tip" style="margin-top:-5px">ℹ Billeder gemmes i rapporten</p>
+      <p class="paste-tip">Tag screenshot i T-DOC, klik billedfeltet og tryk Ctrl+V for at indsætte</p>
       <div id="instruments-list"></div>
-      <button id="add-instrument-btn">+ Tilføj instrument</button>
+      <button id="add-instrument-btn" disabled>+ Tilføj instrument</button>
       <div class="editor-actions">
-        <button id="print-btn">&#128438; Udskriv / Gem som PDF</button>
+        <button id="print-btn" disabled>&#128438; Udskriv / Gem som PDF</button>
       </div>
     </div>
   </section>

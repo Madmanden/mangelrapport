@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mangelrapport</title>
+<title>Mangler-rapport — DFS</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -364,7 +364,7 @@
   .img-cell .img-label { font-size: 10px; color: #555; text-align: center; word-break: break-all; font-family: monospace; }
 
   /* ---- PRINT ---- */
-  @page { size: auto; margin: 10mm 12mm; }
+  @page { size: A4 portrait; margin: 10mm 12mm; }
 
   @media print {
     body { background: white; overflow: visible; height: auto; }
@@ -391,22 +391,18 @@
     .img-section { padding-top: 6px; }
     .img-section-label { font-size: 12px; margin-bottom: 4px; }
     .img-grid { gap: 5px; }
-    .img-cell img { max-height: 160mm; }
+    .img-cell img { max-height: 80mm; }
     .img-cell .img-label { font-size: 12px; }
 
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  }
-
-  @media print and (orientation: landscape) {
-    .img-cell img { max-height: 80mm; }
-    .img-grid { grid-template-columns: repeat(3, 1fr) !important; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Mangelrapport</h1>
+  <h1>Mangler-rapport</h1>
+  <span class="sub">— Den Fælles Sterilcentral</span>
   <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
     <span style="font-size:13px;color:var(--muted);">Zoom</span>
     <input type="range" id="zoom-slider" min="80" max="160" value="100" step="5" style="width:100px;">
@@ -555,8 +551,7 @@
         '<input type="date" id="dato-input" value="' + (r.dato || today()) + '"></div>' +
       '<hr class="divider">' +
       '<div class="section-label" style="margin-bottom:5px">Manglende instrumenter</div>' +
-      '<p class="paste-tip">Klik billedfeltet, tag et screenshot, tryk Ctrl+V</p>' +
-      '<p class="paste-tip" style="margin-top:-5px">&#9432; Billeder gemmes kun i denne session</p>' +
+      '<p class="paste-tip">Tag screenshot i T-DOC, klik billedfeltet og tryk Ctrl+V for at indsætte</p>' +
       '<div class="instr-list" id="instr-list"></div>' +
       '<button class="add-btn" id="add-instr-btn">+ Tilføj instrument</button>' +
       '<div class="editor-actions">' +
@@ -598,7 +593,7 @@
       const zone = document.createElement('div');
       zone.className = 'paste-zone' + (activePasteId === row.id ? ' active' : '');
       zone.tabIndex = 0;
-      zone.title = 'Klik, tag et screenshot, Ctrl+V';
+      zone.title = 'Klik, screenshot i T-DOC, Ctrl+V';
       if (row.img) {
         const img = document.createElement('img'); img.src = row.img; zone.appendChild(img);
 

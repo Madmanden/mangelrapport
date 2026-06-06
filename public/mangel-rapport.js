@@ -18,6 +18,8 @@ const Startup = {};
 //  API wrappers
 // ─────────────────────────────────────────────
 async function api(path, options = {}) {
+  if (state.sessionExpired) throw new Error('session-expired');
+
   let res;
   try {
     res = await fetch(`${API_BASE}${path}`, {
@@ -53,8 +55,11 @@ async function api(path, options = {}) {
     throw new Error(message);
   }
 
-  if (text && !contentType.includes('application/json') && typeof data !== 'object') {
-    throw new Error('Du skal logge ind igen.');
+  // Cloudflare Access expiry: a 200 OK that returns the login page as text/html
+  // instead of JSON. Generic HTML 4xx/5xx errors are already handled above.
+  if (res.ok && contentType.includes('text/html') && !contentType.includes('application/json')) {
+    Status.showSessionExpired();
+    throw new Error('session-expired');
   }
 
   return data;
@@ -206,6 +211,7 @@ const state = {
   images: {},         // keyed by instrumentId → data URL (synced via DB)
   activeImageField: null,
   offline: false,
+  sessionExpired: false,
 };
 
 let uiBound = false;
@@ -297,7 +303,7 @@ function hasActiveTextEntry() {
 }
 
 function canAutoRefresh() {
-  return !state.offline && navigator.onLine && document.visibilityState === 'visible' && !hasActiveTextEntry();
+  return !state.offline && !state.sessionExpired && navigator.onLine && document.visibilityState === 'visible' && !hasActiveTextEntry();
 }
 
 async function autoRefreshFromServer() {
@@ -358,7 +364,7 @@ async function refreshFromServer(selectedReportId = state.currentReportId) {
   }
 }
 
-function buildCollageNode(imageRows, cols) {
+function buildCollageNode(imageRows, previewCols, printCols) {
   if (!imageRows.length) {
     const empty = document.createElement('p');
     empty.style.fontSize = '12px';
@@ -377,7 +383,8 @@ function buildCollageNode(imageRows, cols) {
   title.textContent = `Billeder (${imageRows.length})`;
 
   const grid = document.createElement('div');
-  grid.className = `pp-collage-grid cols-${cols}`;
+  grid.className = `pp-collage-grid cols-${previewCols}`;
+  grid.dataset.printCols = String(printCols);
 
   for (const inst of imageRows) {
     const imgWrap = document.createElement('div');
@@ -421,7 +428,9 @@ function renderSidebar() {
 
   for (const r of state.reports) {
     const div = document.createElement('div');
-    div.className = 'report-item' + (r.id === state.currentReportId ? ' active' : '');
+    const reportDate = r.dato ? new Date(r.dato + 'T12:00:00') : null;
+    const isStale = reportDate && (Date.now() - reportDate.getTime()) > 7 * 24 * 60 * 60 * 1000;
+    div.className = 'report-item' + (r.id === state.currentReportId ? ' active' : '') + (isStale ? ' stale' : '');
     const idDiv = document.createElement('div');
     idDiv.className = 'bakke-id' + (r.bakke_id ? '' : ' empty');
     idDiv.textContent = r.bakke_id || 'Ingen bakke-ID';
@@ -430,8 +439,8 @@ function renderSidebar() {
     navnDiv.textContent = r.bakke_navn || '';
     const datoDiv = document.createElement('div');
     datoDiv.className = 'dato';
-    const displayDate = r.dato
-      ? new Date(r.dato + 'T12:00:00').toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })
+    const displayDate = reportDate
+      ? reportDate.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })
       : '—';
     const count = Number.isFinite(Number(r.instrument_count)) ? Number(r.instrument_count) : 0;
     datoDiv.textContent = `${displayDate} · ${count} instr.`;
@@ -457,21 +466,48 @@ function renderSidebar() {
 
 function renderEditor() {
   const list = document.getElementById('instruments-list');
+  const editor = document.getElementById('editor');
+  const bakkeIdInput = document.getElementById('bakke-id');
+  const bakkeNavnInput = document.getElementById('bakke-navn');
+  const datoInput = document.getElementById('dato');
+  const addInstrumentBtn = document.getElementById('add-instrument-btn');
+  const printBtn = document.getElementById('print-btn');
   list.innerHTML = '';
 
   if (!state.currentReportId) {
-    document.getElementById('bakke-id').value = '';
-    document.getElementById('bakke-navn').value = '';
-    document.getElementById('dato').value = '';
+    editor.title = 'Du skal oprette en ny rapport først.';
+    bakkeIdInput.value = '';
+    bakkeNavnInput.value = '';
+    datoInput.value = '';
+    bakkeIdInput.disabled = true;
+    bakkeNavnInput.disabled = true;
+    datoInput.disabled = true;
+    addInstrumentBtn.disabled = true;
+    printBtn.disabled = true;
     return;
   }
 
   const report = state.reports.find(r => r.id === state.currentReportId);
-  if (!report) return;
+  if (!report) {
+    editor.title = 'Du skal oprette en ny rapport først.';
+    bakkeIdInput.disabled = true;
+    bakkeNavnInput.disabled = true;
+    datoInput.disabled = true;
+    addInstrumentBtn.disabled = true;
+    printBtn.disabled = true;
+    return;
+  }
 
-  document.getElementById('bakke-id').value = report.bakke_id ?? '';
-  document.getElementById('bakke-navn').value = report.bakke_navn ?? '';
-  document.getElementById('dato').value = report.dato ?? '';
+  bakkeIdInput.disabled = false;
+  bakkeNavnInput.disabled = false;
+  datoInput.disabled = false;
+  addInstrumentBtn.disabled = false;
+  printBtn.disabled = false;
+  editor.title = '';
+
+  bakkeIdInput.value = report.bakke_id ?? '';
+  bakkeNavnInput.value = report.bakke_navn ?? '';
+  datoInput.value = report.dato ?? '';
 
   const instruments = state.instruments[state.currentReportId] ?? [];
   for (const inst of instruments) {
@@ -584,10 +620,9 @@ function renderPrintPreview() {
     return;
   }
 
-  let cols = 1;
-  if (imageCount >= 10) cols = 4;
-  else if (imageCount >= 5) cols = 3;
-  else if (imageCount >= 2) cols = 2;
+  let previewCols = 1;
+  if (imageCount >= 2) previewCols = 2;
+  const printCols = previewCols;
 
   const tableRows = rows.map((inst, idx) => {
     const hasImg = state.images[inst.id];
@@ -633,7 +668,7 @@ function renderPrintPreview() {
   `;
   const collageSlot = page.querySelector('#pp-collage-slot');
   if (collageSlot) {
-    collageSlot.replaceWith(buildCollageNode(imageRows, cols));
+    collageSlot.replaceWith(buildCollageNode(imageRows, previewCols, printCols));
   }
 }
 
@@ -702,14 +737,47 @@ async function deleteReportById(id) {
   }
 }
 
+function isBlankReport(report) {
+  if (!report) return false;
+  const bakkeId = (report.bakke_id ?? '').trim();
+  const bakkeNavn = (report.bakke_navn ?? '').trim();
+  if (bakkeId || bakkeNavn) return false;
+  const loaded = state.instruments[report.id];
+  if (loaded) return loaded.every(isBlankInstrument);
+  return (Number(report.instrument_count) || 0) === 0;
+}
+
+let createReportInFlight = false;
 async function createNewReport() {
-  const id = Utils.uuid();
+  if (createReportInFlight) return;
+  createReportInFlight = true;
+  const btn = document.getElementById('new-report-btn');
+  if (btn) btn.disabled = true;
   try {
-    const { report } = await Api.createReport(id);
-    report.instrument_count = 0;
-    await refreshFromServer(id);
-  } catch (err) {
-    Status.showError('Kunne ikke oprette rapport: ' + err.message);
+    const existingBlank = state.reports.find(isBlankReport);
+    if (existingBlank) {
+      Status.showError('Du har allerede en tom rapport. Udfyld den, før du opretter en ny.');
+      if (existingBlank.id !== state.currentReportId) {
+        try {
+          await selectReport(existingBlank.id);
+        } catch (err) {
+          Status.showError('Kunne ikke åbne rapport: ' + err.message);
+        }
+      }
+      return;
+    }
+
+    const id = Utils.uuid();
+    try {
+      const { report } = await Api.createReport(id);
+      report.instrument_count = 0;
+      await refreshFromServer(id);
+    } catch (err) {
+      Status.showError('Kunne ikke oprette rapport: ' + err.message);
+    }
+  } finally {
+    createReportInFlight = false;
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -856,6 +924,7 @@ window.addEventListener('online', () => { Status.hideOffline(); Startup.init(); 
 //  Status and overlay helpers
 // ─────────────────────────────────────────────
 function showError(msg) {
+  if (state.sessionExpired || msg === 'session-expired') return;
   const banner = document.getElementById('error-banner');
   banner.textContent = msg;
   banner.style.display = 'block';
@@ -870,6 +939,17 @@ function showOffline() {
 function hideOffline() {
   state.offline = false;
   document.getElementById('offline-banner').className = '';
+}
+
+function showSessionExpired() {
+  state.sessionExpired = true;
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+  const syncStatus = document.getElementById('sync-status');
+  if (syncStatus) { syncStatus.textContent = ''; syncStatus.className = ''; }
+  document.getElementById('session-banner').className = 'show';
 }
 
 function showLoading(show) {
@@ -925,6 +1005,7 @@ Object.assign(Status, {
   showOffline,
   hideOffline,
   showLoading,
+  showSessionExpired,
 });
 
 Object.assign(Utils, {

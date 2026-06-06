@@ -145,6 +145,9 @@
 
     .report-item:hover { background: var(--bg); }
     .report-item.active { background: var(--accent-bg); border-color: rgba(26, 92, 158, 0.2); }
+    .report-item.stale { background: #fffde7; border-color: #f9c200; }
+    .report-item.stale:hover { background: #fff9c4; }
+    .report-item.stale.active { background: #fff9c4; border-color: #f9c200; }
 
     .report-item .delete-btn {
       opacity: 0;
@@ -224,6 +227,12 @@
       background: var(--surface);
     }
     .field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(26, 92, 158, 0.15); }
+    .field input:disabled {
+      background: #f2f2ef;
+      color: var(--hint);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
 
     .separator {
       border: none;
@@ -235,8 +244,8 @@
 
     .instrument-row {
       display: grid;
-      grid-template-columns: 58px minmax(0, 1fr) 44px;
-      gap: 10px;
+      grid-template-columns: 50px minmax(0, 1fr) 24px;
+      gap: 7px;
       align-items: center;
       background: #fafaf8;
       border: 0.5px solid var(--border);
@@ -282,17 +291,18 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      padding-right: 10px;
-      box-sizing: border-box;
     }
 
     .inst-fields .inst-row {
       display: flex;
-      gap: 6px;
+      gap: 7px;
+      min-width: 0;
     }
 
     .inst-fields input[type=text] {
       flex: 1;
+      min-width: 0;
+      width: 100%;
       padding: 6px 8px;
       border: 0.5px solid var(--border);
       border-radius: 6px;
@@ -302,7 +312,7 @@
 
     .inst-fields input[type=text]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(26, 92, 158, 0.15); }
 
-    .inst-fields input[name=antal] { width: 50px; flex: none; }
+    .inst-fields input[name=antal] { width: 36px; flex: none; }
 
     .instrument-row .inst-delete {
       background: none;
@@ -310,9 +320,9 @@
       font-size: 18px;
       color: var(--hint);
       cursor: pointer;
-      width: 32px;
-      justify-self: end;
-      padding: 2px 4px;
+      width: 24px;
+      justify-self: center;
+      padding: 2px 0;
       line-height: 1;
       flex-shrink: 0;
       border-radius: 4px;
@@ -335,6 +345,13 @@
     }
 
     #add-instrument-btn:hover { background: var(--bg); border-color: var(--accent); color: var(--accent); }
+    #add-instrument-btn:disabled {
+      background: transparent;
+      border-color: rgba(0, 0, 0, 0.08);
+      color: var(--hint);
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
 
     .editor-actions {
       margin-top: auto;
@@ -358,6 +375,10 @@
     }
 
     #print-btn:hover { opacity: 0.82; }
+    #print-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
 
     /* ── Print preview ── */
     #print-preview {
@@ -443,8 +464,6 @@
     }
     .pp-collage-grid.cols-1 { grid-template-columns: 1fr; }
     .pp-collage-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
-    .pp-collage-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-    .pp-collage-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
 
     .pp-img-wrap {
       border: 0.5px solid #ddd;
@@ -517,6 +536,27 @@
     }
     #offline-banner.show { display: block; }
 
+    #session-banner {
+      display: none;
+      background: #fff0f0;
+      border-bottom: 2px solid var(--danger);
+      padding: 10px 16px;
+      color: var(--danger);
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    #session-banner.show { display: flex; align-items: center; gap: 12px; }
+    #session-banner button {
+      padding: 4px 12px;
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
     .spinner {
       width: 36px;
       height: 36px;
@@ -528,10 +568,23 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    @page {
+      size: A4 portrait;
+      margin: 8mm;
+    }
+
     /* ── @media print ── */
     @media print {
-      header, aside, #editor, #error-banner, #loading, #offline-banner { display: none !important; }
-      body { background: white; overflow: visible; }
+      header, aside, #editor, #error-banner, #loading, #offline-banner, #session-banner { display: none !important; }
+      html, body {
+        height: auto;
+        overflow: visible;
+      }
+      body {
+        background: white;
+        font-size: 11px;
+        overflow: visible;
+      }
       #app { display: block; overflow: visible; }
       #print-preview {
         background: white;
@@ -541,9 +594,60 @@
       #print-preview-inner {
         box-shadow: none;
         max-width: 100%;
-        padding: 20px 0;
+        padding: 0;
         border: none;
         border-radius: 0;
+        min-height: 0;
+        overflow: visible;
+      }
+
+      .pp-header {
+        padding-bottom: 7px;
+        margin-bottom: 8px;
+        gap: 10px;
+      }
+      .pp-header h2 { font-size: 14px; margin-bottom: 1px; }
+      .pp-bakke { font-size: 11px; }
+      .pp-right { font-size: 9px; line-height: 1.35; }
+
+      .pp-table {
+        margin-bottom: 8px;
+        font-size: 10px;
+      }
+      .pp-table th,
+      .pp-table td {
+        padding: 3px 5px;
+      }
+      .pp-table th { font-size: 9px; }
+      .pp-table .nr { font-size: 10.5px; }
+      .pp-table .has-img,
+      .pp-table .no-img { font-size: 9px; }
+      .pp-table col.col-num { width: 24px; }
+      .pp-table col.col-antal { width: 42px; }
+      .pp-table col.col-billede { width: 52px; }
+
+      .pp-collage {
+        margin-top: 7px;
+        padding-top: 7px;
+      }
+      .pp-collage-title {
+        font-size: 8.5px;
+        margin-bottom: 5px;
+      }
+      .pp-collage-grid { gap: 5px; }
+      .pp-img-wrap {
+        border-radius: 2px;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .pp-img-frame {
+        aspect-ratio: 4 / 3;
+        max-height: 48mm;
+      }
+      .pp-img-label {
+        font-size: 8px;
+        line-height: 1.15;
+        padding: 2px 3px;
       }
       * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }

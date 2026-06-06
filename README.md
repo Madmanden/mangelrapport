@@ -1,10 +1,10 @@
 # Mangelrapport
 
-Mangelrapport is a small Cloudflare Pages app for tracking missing instruments in repair trays.
+Mangelrapport is a browser-based app for tracking missing instruments in repair trays.
 
-In a sterile services department, instruments sometimes go missing from repair trays. Keeping track of which ones are missing — and where they should go back — used to mean juggling it mentally or on scraps of paper. This app gives the team a shared, visual overview with tray numbers, part numbers, and photos so everyone knows what to look out for.
+It gives a shared overview of reports, tray details, part numbers, and photos so the team can keep track of what is missing without relying on scattered notes or separate local files.
 
-The project started as a simple local-only single HTML file prototype. You can still see that early shape in `standalone/standalone.html`. It later became a web app so multiple people could work against the same shared database instead of separate local copies.
+The project grew out of a local-only prototype. You can still see the original single-file shape in `standalone/standalone.html`. The current app is a shared web app backed by Cloudflare Pages Functions and Turso.
 
 ## Screenshot
 
@@ -16,14 +16,15 @@ The project started as a simple local-only single HTML file prototype. You can s
 - add missing instruments and photos
 - show a live print preview
 - persist data through Cloudflare Pages Functions and Turso
+- warn when the current session has expired
 
 ## Project structure
 
-- `public/` — the browser app and static assets
+- `public/` — browser app and static assets
 - `functions/api/` — Cloudflare Pages Functions
-- `standalone/` — the original local-only prototype
-- `screenshot/` — screenshot of the app
-- `wrangler.toml` — Pages configuration
+- `standalone/` — original local-only prototype
+- `screenshot/` — app screenshot
+- `wrangler.toml` — Cloudflare Pages configuration
 
 ## Local development
 
