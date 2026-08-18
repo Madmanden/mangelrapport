@@ -4,6 +4,8 @@ Mangelrapport is a browser-based app for tracking missing instruments in repair 
 
 It gives a shared overview of reports, tray details, part numbers, and photos so the team can keep track of what is missing without relying on scattered notes or separate local files.
 
+**Case study:** [christianholmdev.dk/projects/mangelrapport](https://christianholmdev.dk/projects/mangelrapport/)
+
 The project grew out of a local-only prototype. You can still see the original single-file shape in `standalone/standalone.html`. The current app is a shared web app backed by Cloudflare Pages Functions and Turso.
 
 ## Screenshot
